@@ -2,7 +2,7 @@ library(ggplot2)
 load("connectivity_plain.rda")
 load("response.rda")
 
-
+#vector to symetry matrix 
 v2m = function(v){
   x=length(v)
   n=(1+sqrt(1+8*x))/2
@@ -12,7 +12,7 @@ v2m = function(v){
   return(mat)
 }
 
-
+#matrix to vector
 m2v = function(m){
   x=dim(m)[1]
   n=(x-1)*x/2
@@ -29,7 +29,7 @@ m2v = function(m){
 # m= v2m(v)
 len = length( m2v(connectivity[,,1]))
 
-
+#each row of image is the vectorized  connectome of each subject 
 image = matrix(NA, nrow = dim(connectivity)[3] , len)
 for (i in 1:dim(connectivity)[3]) {
   image[i,] =m2v(connectivity[,,i])
@@ -60,11 +60,13 @@ data = as.data.frame(cbind(image,time, ad))
 
 library(glmnet)
 cv = cv.glmnet(x= as.matrix(cbind(image,time)), y=data$ad, alpha=1, family="binomial")
+#cross validation
 plot(cv, xvar="lambda")
+#fitted model after CV
 fit = glmnet(x= as.matrix(cbind(image,time)), y=data$ad, alpha=1, family="binomial", lambda = cv$lambda.min)
 fit$beta
 
-# now prediction of X* pick someone normal as X*, Y* at age 35 what happens to them at age 80 , star 
+# now prediction of in sample X* pick someone normal as X*, Y* at age 60 what happens to them at age 80 , star 
 star=71
 goal_age = 80
 timestar = as.data.frame(matrix( NA , 1 , k))
@@ -80,13 +82,13 @@ pstar #probability of developing AD
 
 
 ## function of time for each subject
-ages = seq(min(response$age), 100)
+ages = seq(min(response$age), 100) # range of trajectory
 # ages = seq(60, 100)
 
 # star=1
 
 # plot=ggplot()
-data_pstar = vector(mode = "list" , dim(connectivity)[3])
+data_pstar = vector(mode = "list" , dim(connectivity)[3]) # store p star for range of ages
 for (star in 1:dim(connectivity)[3]) {
 # for (star in 1:2) {
 
@@ -118,7 +120,7 @@ cat("done", star,"\n")
 # data_pstar = as.data.frame(data_pstar)
 library(reshape2)
 
-melt = melt(data_pstar, id.vars=c("ages") )
+melt = melt(data_pstar, id.vars=c("ages") ) # long version for visualization purpose
 
 ggplot(melt,                            
        aes(x = ages,
@@ -126,7 +128,7 @@ ggplot(melt,
            col = L1, group=L1)) +
   geom_line()
 
-ggsave(paste0('/Users/ali/Desktop/may23/risk/no_age_effect/code/figures/all.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('all.png' ) , plot = last_plot(), device = "png")
 
 melt$sex = response$sex[melt$L1]
 ggplot(melt,                            
@@ -134,7 +136,7 @@ ggplot(melt,
            y = value,
            col = sex, group=L1, alpha=0.7)) +
   geom_line()
-ggsave(paste0('/Users/ali/Desktop/may23/risk/no_age_effect/code/figures/sex.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('sex.png' ) , plot = last_plot(), device = "png")
 
 melt$current_age = response$age[melt$L1]
 ggplot(melt,                            
@@ -143,7 +145,7 @@ ggplot(melt,
            col = current_age, group=L1, alpha= 1)) + 
    scale_colour_gradient(low = "red", high = "blue")+
   geom_line()
-ggsave(paste0('/Users/ali/Desktop/may23/risk/no_age_effect/code/figures/current_age.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('current_age.png' ) , plot = last_plot(), device = "png")
 
 
 melt$weight = response$Weight[melt$L1]
@@ -153,7 +155,7 @@ ggplot(melt,
            col = weight, group=L1, alpha=0.7)) +
   scale_colour_gradient(low = "red", high = "blue")+
   geom_line()
-ggsave(paste0('/Users/ali/Desktop/may23/risk/no_age_effect/code/figures/weight.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('weight.png' ) , plot = last_plot(), device = "png")
 
 
 melt$genotype = response$genotype[melt$L1]
@@ -165,7 +167,7 @@ ggplot(melt,
            y = value,
            col = genotype, group=L1, alpha=1)) +
   geom_line()
-ggsave(paste0('/Users/ali/Desktop/may23/risk/no_age_effect/code/figures/genotype.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('genotype.png' ) , plot = last_plot(), device = "png")
 
 
 melt$risk = response$risk_for_ad[melt$L1]
@@ -174,7 +176,7 @@ ggplot(melt,
            y = value,
            col = as.factor(risk), group=L1, alpha=1)) +
   geom_line()
-ggsave(paste0('/Users/ali/Desktop/may23/risk/no_age_effect/code/figures/risk.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('risk.png' ) , plot = last_plot(), device = "png")
 
 
 
