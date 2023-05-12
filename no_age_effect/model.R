@@ -53,18 +53,37 @@ for (j in 1:dim(image)[2]) {
 
 
 
+
 ad = response$risk_for_ad
 ad [ad==1 | ad ==0] = -1
 ad [ad ==2 | ad ==3 ] = 1 
 data = as.data.frame(cbind(image,time, ad))
 
+
+response$sexnum = response$sex ; response$sexnum[response$sexnum=="M"] = 1 ;  response$sexnum[response$sexnum=="F"] = -1;
+response$sexnum = as.numeric(response$sexnum)
+response$genotypenum = response$genotype; 
+response$genotypenum[response$genotypenum == "APOE33" | response$genotypenum == "APOE23"] = 3;
+response$genotypenum[response$genotypenum == "APOE34" | response$genotypenum == "APOE44" ] = 4;
+response$genotypenum=as.numeric(response$genotypenum)
+
 library(glmnet)
-cv = cv.glmnet(x= as.matrix(cbind(image,time)), y=data$ad, alpha=1, family="binomial")
+input_x = as.matrix(cbind(image,time, response$sexnum, response$genotypenum, response$BMI ))
+cv = cv.glmnet(x= input_x, y=data$ad, alpha=1, family="binomial")
 #cross validation
 plot(cv, xvar="lambda")
 #fitted model after CV
-fit = glmnet(x= as.matrix(cbind(image,time)), y=data$ad, alpha=1, family="binomial", lambda = cv$lambda.min)
+fit = glmnet(x=input_x, y=data$ad, alpha=1, family="binomial", lambda = cv$lambda.min)
 fit$beta
+
+
+
+
+predict_validation <- predict(cv, newx = input_x, s = cv$lambda.min , type = "class")
+cm = caret::confusionMatrix(table(predict_validation,as.matrix(as.character(data$ad) )))
+cm
+
+
 
 # now prediction of in sample X* pick someone normal as X*, Y* at age 60 what happens to them at age 80 , star 
 star=71
@@ -74,7 +93,8 @@ for (kk in 1:k) {
   timestar[,kk] = goal_age^kk
   colnames(timestar)[kk] = paste0("t",kk)
 }
-datastar = cbind (data[star,1:len ], timestar)
+
+datastar = cbind (data[star,1:len ], timestar, response$sexnum[star], response$genotypenum[star], response$BMI[star])
 
 pstar = predict(fit, as.matrix(datastar), type="response")
 data$t1[star ] #their current age
@@ -100,7 +120,7 @@ for (kk in 1:k) {
   timestar[,kk] = ages[i]^kk
   colnames(timestar)[kk] = paste0("t",kk)
 }
-datastar = cbind (data[star,1:len ], timestar)
+datastar = cbind (data[star,1:len ], timestar, response$sexnum[star], response$genotypenum[star], response$BMI[star])
 pstar = predict(fit, as.matrix(datastar), type="response")
 pstars[i] = pstar #probability of developing AD
 }
@@ -148,14 +168,15 @@ ggplot(melt,
 ggsave(paste0('current_age.png' ) , plot = last_plot(), device = "png")
 
 
-melt$weight = response$Weight[melt$L1]
+melt$BMI = response$BMI[melt$L1]
 ggplot(melt,                            
        aes(x = ages,
            y = value,
-           col = weight, group=L1, alpha=0.7)) +
-  scale_colour_gradient(low = "red", high = "blue")+
+           col = BMI, group=L1, alpha=0.7)) +
+   scale_colour_gradient(low = "red", high = "blue", palette=)+
+  #scale_colour_binned(type = "viridis", n.breaks=10)+
   geom_line()
-ggsave(paste0('weight.png' ) , plot = last_plot(), device = "png")
+ggsave(paste0('BMI.png' ) , plot = last_plot(), device = "png")
 
 
 melt$genotype = response$genotype[melt$L1]
